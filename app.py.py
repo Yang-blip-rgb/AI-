@@ -28,7 +28,7 @@ if st.button("🚀 一键生成文案"):
         st.warning("请先输入农产品名称！")
     else:
         # 从系统环境变量中获取 API Key
-        api_key = os.getenv(DEEPSEEK_API_KEY)
+        api_key = os.getenv("DEEPSEEK_API_KEY")
         
         if not api_key:
             st.error("未读取到 API Key！请检查是否在电脑系统环境变量中配置了 DEEPSEEK_API_KEY。")
