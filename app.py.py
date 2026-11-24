@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import os  # 新增：用于读取系统环境变量
 
 # 页面配置
 st.set_page_config(page_title="山东农产品AI营销文案助手", page_icon="🌾")
@@ -7,15 +8,12 @@ st.set_page_config(page_title="山东农产品AI营销文案助手", page_icon="
 st.title("🌾 山东农产品AI营销文案助手")
 st.write("输入你的农产品，一键生成小红书/抖音爆款文案！")
 
-# 【关键新增】：让用户自己输入 Key，不泄露你的私钥
-api_key = st.text_input("请输入您的 DeepSeek API Key (以 sk- 开头):", type="password")
-
-st.divider() # 加一条分割线，界面更好看
+st.divider()
 
 product = st.text_input("请输入农产品名称（例如：烟台苹果、章丘大葱）：")
 platform = st.selectbox("选择发布平台：", ["小红书", "抖音", "微信视频号", "朋友圈"])
 
-# 这是你作为人类“深度加工”的核心：系统提示词
+# 核心提示词
 system_prompt = f"""
 你是一个精通山东本土文化的资深营销专家。
 现在你需要为【{product}】写一篇【{platform}】的营销文案。
@@ -26,37 +24,40 @@ system_prompt = f"""
 """
 
 if st.button("🚀 一键生成文案"):
-    if not api_key:
-        st.warning("请先在上方输入你的 API Key！")
-    elif not product:
+    if not product:
         st.warning("请先输入农产品名称！")
     else:
-        with st.spinner('AI正在思考中...'):
-            api_url = "https://api.deepseek.com/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            data = {
-                "model": "deepseek-chat",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"请帮我写一篇关于{product}的营销文案。"}
-                ]
-            }
-            
-            try:
-                response = requests.post(api_url, headers=headers, json=data)
-                result = response.json()
+        # 从系统环境变量中获取 API Key
+        api_key = os.getenv("sk-d5e694e6dc0d44059959f30f78b02eda")
+        
+        if not api_key:
+            st.error("未读取到 API Key！请检查是否在电脑系统环境变量中配置了 DEEPSEEK_API_KEY。")
+        else:
+            with st.spinner('AI正在思考中...'):
+                api_url = "https://api.deepseek.com/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"请帮我写一篇关于{product}的营销文案。"}
+                    ]
+                }
                 
-                # 检查是否成功返回
-                if 'choices' in result:
-                    ai_text = result['choices'][0]['message']['content']
-                    st.success("生成成功！")
-                    # 强制呈现可编辑文本框，体现人机协同
-                    st.text_area("AI生成的初稿（你可以在这里进行人工修改）：", ai_text, height=300)
-                else:
-                    st.error(f"调用失败，请检查您的 API Key 是否正确或账户是否有余额。错误信息：{result}")
+                try:
+                    response = requests.post(api_url, headers=headers, json=data)
+                    result = response.json()
                     
-            except Exception as e:
-                st.error(f"网络或代码出错了。错误信息：{e}")
+                    if 'choices' in result:
+                        ai_text = result['choices'][0]['message']['content']
+                        st.success("生成成功！")
+                        # 强制呈现可编辑文本框，体现人机协同
+                        st.text_area("AI生成的初稿（你可以在这里进行人工修改）：", ai_text, height=300)
+                    else:
+                        st.error(f"调用失败，请检查 API Key 是否正确或账户余额。错误信息：{result}")
+                        
+                except Exception as e:
+                    st.error(f"网络或代码出错了。错误信息：{e}")
